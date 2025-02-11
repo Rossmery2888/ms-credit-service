@@ -1,0 +1,28 @@
+openapi: "3.0.0"
+info:
+  version: 1.0.0
+  title: Credit Service
+servers:
+  - url: http://localhost:8585
+paths:
+  /Credit:
+    get:
+      summary: "Crear Credito"
+      operationId: createCredit
+      tags:
+        - "Credit"
+      responses:
+        '200':
+          description: "Registra un nueva cuenta"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreditResponse"
+components:
+  schemas:
+    CreditResponse:
+      required:
+        - text
+      properties:
+        text:
+          type: string
