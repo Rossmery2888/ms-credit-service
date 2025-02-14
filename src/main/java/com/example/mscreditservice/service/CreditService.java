@@ -1,15 +1,17 @@
 package com.example.mscreditservice.service;
 
-import com.example.mscreditservice.dto.request.CreditRequestDTO;
-import com.example.mscreditservice.dto.response.CreditResponseDTO;
+
+import com.example.mscreditservice.dto.CreditDTO;
+import com.example.mscreditservice.model.Credit;
+import com.example.mscreditservice.model.CreditRequest;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
 
 public interface CreditService {
-    Mono<CreditResponseDTO> createCredit(CreditRequestDTO request);
-    Mono<CreditResponseDTO> getCreditById(String id);
-    Flux<CreditResponseDTO> getCreditsByCustomerId(String customerId);
-    Mono<CreditResponseDTO> makePayment(String creditId, BigDecimal amount);
+    Flux<Credit> getCreditsByCustomerId(String customerId);
+    Mono<Credit> createPersonalCredit(CreditRequest request);
+    Mono<Credit> createBusinessCredit(CreditRequest request);
+    Mono<Credit> payCredit(String creditId, BigDecimal paymentAmount);
 }

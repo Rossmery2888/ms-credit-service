@@ -1,10 +1,11 @@
 package com.example.mscreditservice.controller;
 
-import com.example.mscreditservice.dto.request.CreditRequestDTO;
-import com.example.mscreditservice.dto.response.CreditResponseDTO;
+import com.example.mscreditservice.dto.CreditDTO;
+import com.example.mscreditservice.model.Credit;
+import com.example.mscreditservice.model.CreditRequest;
+import com.example.mscreditservice.model.PaymentRequest;
 import com.example.mscreditservice.service.CreditService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -12,33 +13,29 @@ import reactor.core.publisher.Mono;
 import java.math.BigDecimal;
 
 @RestController
-@RequestMapping("/api/v1/credits")
+@RequestMapping("/api/credits")
 @RequiredArgsConstructor
 public class CreditController {
     private final CreditService creditService;
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public Mono<CreditResponseDTO> createCredit(@RequestBody CreditRequestDTO request) {
-        return creditService.createCredit(request);
-    }
-
-    @GetMapping("/{id}")
-    public Mono<CreditResponseDTO> getCredit(@PathVariable String id) {
-        return creditService.getCreditById(id);
-    }
-
     @GetMapping("/customer/{customerId}")
-    public Flux<CreditResponseDTO> getCreditsByCustomer(@PathVariable String customerId) {
+    public Flux<Credit> getCreditsByCustomerId(@PathVariable String customerId) {
         return creditService.getCreditsByCustomerId(customerId);
     }
-
-    @PostMapping("/{id}/payment")
-    public Mono<CreditResponseDTO> makePayment(
-            @PathVariable String id,
-            @RequestParam BigDecimal amount
-    ) {
-        return creditService.makePayment(id, amount);
+    @PostMapping("/personal")
+    public Mono<Credit> createPersonalCredit(@RequestBody CreditRequest request) {
+        return creditService.createPersonalCredit(request);
     }
+
+    @PostMapping("/business")
+    public Mono<Credit> createBusinessCredit(@RequestBody CreditRequest request) {
+        return creditService.createBusinessCredit(request);
+    }
+    @PostMapping("/{creditId}/pay")
+    public Mono<Credit> payCredit(@PathVariable String creditId, @RequestBody PaymentRequest paymentRequest) {
+        return creditService.payCredit(creditId, paymentRequest.getPaymentAmount());
+    }
+
 }
+
 

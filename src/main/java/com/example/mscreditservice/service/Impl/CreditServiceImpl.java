@@ -1,96 +1,109 @@
 package com.example.mscreditservice.service.Impl;
 
-import com.example.mscreditservice.Exception.BusinessException;
-import com.example.mscreditservice.dto.request.CreditRequestDTO;
-import com.example.mscreditservice.dto.response.CreditResponseDTO;
+
 import com.example.mscreditservice.model.Credit;
+import com.example.mscreditservice.model.CreditRequest;
 import com.example.mscreditservice.repository.CreditRepository;
 import com.example.mscreditservice.service.CreditService;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Service
-@Slf4j
 @RequiredArgsConstructor
 public class CreditServiceImpl implements CreditService {
     private final CreditRepository creditRepository;
-    private static final BigDecimal DEFAULT_INTEREST_RATE = new BigDecimal("0.15"); // 15%
+    private static final int MAX_PERSONAL_CREDITS = 1;
 
     @Override
-    public Mono<CreditResponseDTO> createCredit(CreditRequestDTO request) {
-        return validateCreditRequest(request)
-                .flatMap(validRequest -> {
-                    Credit credit = new Credit();
-                    credit.setCustomerId(request.getCustomerId());
-                    credit.setCustomerType(request.getCustomerType());
-                    credit.setAmount(request.getAmount());
-                    credit.setRemainingAmount(request.getAmount());
-                    credit.setTerm(request.getTerm());
-                    credit.setInterestRate(DEFAULT_INTEREST_RATE);
-                    credit.setCreatedAt(LocalDateTime.now());
-                    credit.setStatus("PENDING");
+    public Flux<Credit> getCreditsByCustomerId(String customerId) {
+        return creditRepository.findByCustomerId(customerId);
+    }
 
-                    return creditRepository.save(credit)
-                            .map(this::mapToResponse);
+    @Override
+    public Mono<Credit> createPersonalCredit(CreditRequest request) {
+        // Verifica si el cliente personal ya tiene un crédito activo
+        return creditRepository.findByCustomerIdAndCreditTypeAndStatus(
+                        request.getCustomerId(),
+                        "PERSONAL",
+                        "ACTIVE"
+                )
+                .count()
+                .flatMap(count -> {
+                    if (count >= MAX_PERSONAL_CREDITS) {
+                        return Mono.error(new IllegalStateException("El cliente personal ya tiene un crédito personal activo."));
+                    }
+
+                    // Si pasa la validacion crea el crédito
+                    Credit credit = new Credit(
+                            UUID.randomUUID().toString(),
+                            "PERSONAL",
+                            request.getCustomerId(),
+                            request.getAmount(),
+                            request.getOutstandingBalance(),
+                            "ACTIVE"
+                    );
+                    return creditRepository.save(credit);
                 });
     }
 
-    private Mono<CreditRequestDTO> validateCreditRequest(CreditRequestDTO request) {
-        return creditRepository.countByCustomerIdAndCustomerType(
-                request.getCustomerId(),
-                request.getCustomerType()
-        ).flatMap(count -> {
-            if ("PERSONAL".equals(request.getCustomerType()) && count > 0) {
-                return Mono.error(new BusinessException("Personal customers can only have one credit"));
-            }
-            return Mono.just(request);
-        });
-    }
-
     @Override
-    public Mono<CreditResponseDTO> getCreditById(String id) {
-        return creditRepository.findById(id)
-                .map(this::mapToResponse);
-    }
+    public Mono<Credit> createBusinessCredit(CreditRequest request) {
+        //límite dinámico
+        final int MAX_BUSINESS_CREDITS = 5;
 
-    @Override
-    public Flux<CreditResponseDTO> getCreditsByCustomerId(String customerId) {
-        return creditRepository.findByCustomerId(customerId)
-                .map(this::mapToResponse);
-    }
-
-    @Override
-    public Mono<CreditResponseDTO> makePayment(String creditId, BigDecimal amount) {
-        return creditRepository.findById(creditId)
-                .flatMap(credit -> {
-                    if (amount.compareTo(credit.getRemainingAmount()) > 0) {
-                        return Mono.error(new BusinessException("Payment amount exceeds remaining balance"));
+        return creditRepository.findByCustomerIdAndCreditTypeAndStatus(
+                        request.getCustomerId(),
+                        "EMPRESARIAL",
+                        "ACTIVE"
+                )
+                .count()
+                .flatMap(count -> {
+                    if (count >= MAX_BUSINESS_CREDITS) {
+                        return Mono.error(new IllegalStateException("El cliente empresarial ya tiene el máximo permitido de créditos activos."));
                     }
 
-                    credit.setRemainingAmount(credit.getRemainingAmount().subtract(amount));
+                    // Se crea el credito si pasa la validacion
+                    Credit credit = new Credit(
+                            UUID.randomUUID().toString(),
+                            "EMPRESARIAL",
+                            request.getCustomerId(),
+                            request.getAmount(),
+                            request.getOutstandingBalance(),
+                            "ACTIVE"
+                    );
                     return creditRepository.save(credit);
-                })
-                .map(this::mapToResponse);
+                });
     }
 
-    private CreditResponseDTO mapToResponse(Credit credit) {
-        return CreditResponseDTO.builder()
-                .id(credit.getId())
-                .customerId(credit.getCustomerId())
-                .customerType(credit.getCustomerType())
-                .amount(credit.getAmount())
-                .remainingAmount(credit.getRemainingAmount())
-                .term(credit.getTerm())
-                .interestRate(credit.getInterestRate())
-                .createdAt(credit.getCreatedAt())
-                .status(credit.getStatus())
-                .build();
+    @Override
+    public Mono<Credit> payCredit(String creditId, BigDecimal paymentAmount) {
+        return creditRepository.findById(creditId)
+                .flatMap(credit -> {
+                    BigDecimal outstandingBalance = credit.getOutstandingBalance();
+
+                    // Validación: Pago excede la deuda
+                    if (paymentAmount.compareTo(outstandingBalance) > 0) {
+                        return Mono.error(new IllegalStateException("El pago excede el saldo pendiente."));
+                    }
+
+                    // Actualizar saldo
+                    BigDecimal newBalance = outstandingBalance.subtract(paymentAmount);
+                    credit.setOutstandingBalance(newBalance);
+
+                    // Si el saldo llega a 0, cambiar estado a PAID
+                    if (newBalance.compareTo(BigDecimal.ZERO) == 0) {
+                        credit.setStatus("PAID");
+                    }
+
+                    return creditRepository.save(credit);
+                })
+                .switchIfEmpty(Mono.error(new IllegalArgumentException("Crédito no encontrado con id: " + creditId)));
     }
 }
+
 
