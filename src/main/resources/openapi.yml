@@ -1,0 +1,368 @@
+openapi: 3.0.3
+info:
+  title: Credit Service API
+  description: API para la gestión de créditos bancarios
+  version: 1.0.0
+servers:
+  - url: http://localhost:8084
+    description: Servidor de desarrollo
+  - url: http://api-gateway:8080/credits
+    description: API Gateway
+
+tags:
+  - name: credits
+    description: Operaciones con créditos bancarios
+
+paths:
+  /credits:
+    get:
+      tags:
+        - credits
+      summary: Obtener todos los créditos
+      description: Retorna un listado de todos los créditos registrados
+      operationId: getAllCredits
+      responses:
+        '200':
+          description: Operación exitosa
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CreditDto'
+    post:
+      tags:
+        - credits
+      summary: Crear un nuevo crédito
+      description: Crea un nuevo crédito con los datos proporcionados
+      operationId: createCredit
+      requestBody:
+        description: Datos del crédito a crear
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreditDto'
+        required: true
+      responses:
+        '201':
+          description: Crédito creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreditDto'
+        '400':
+          description: Datos inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Cliente no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /credits/{id}:
+    get:
+      tags:
+        - credits
+      summary: Obtener crédito por ID
+      description: Retorna un crédito específico según su ID
+      operationId: getCreditById
+      parameters:
+        - name: id
+          in: path
+          description: ID del crédito
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Operación exitosa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreditDto'
+        '404':
+          description: Crédito no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags:
+        - credits
+      summary: Actualizar crédito
+      description: Actualiza los datos de un crédito existente
+      operationId: updateCredit
+      parameters:
+        - name: id
+          in: path
+          description: ID del crédito
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: Datos del crédito a actualizar
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreditDto'
+        required: true
+      responses:
+        '200':
+          description: Crédito actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreditDto'
+        '400':
+          description: Datos inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Crédito no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - credits
+      summary: Eliminar crédito
+      description: Elimina un crédito según su ID
+      operationId: deleteCredit
+      parameters:
+        - name: id
+          in: path
+          description: ID del crédito
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Crédito eliminado
+        '404':
+          description: Crédito no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /credits/customer/{customerId}:
+    get:
+      tags:
+        - credits
+      summary: Obtener créditos por cliente
+      description: Retorna todos los créditos asociados a un cliente
+      operationId: getCreditsByCustomerId
+      parameters:
+        - name: customerId
+          in: path
+          description: ID del cliente
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Operación exitosa
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CreditDto'
+
+  /credits/number/{creditNumber}:
+    get:
+      tags:
+        - credits
+      summary: Obtener crédito por número
+      description: Retorna un crédito específico según su número
+      operationId: getCreditByNumber
+      parameters:
+        - name: creditNumber
+          in: path
+          description: Número del crédito
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Operación exitosa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreditDto'
+        '404':
+          description: Crédito no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /credits/{id}/balance:
+    get:
+      tags:
+        - credits
+      summary: Consultar saldo de crédito
+      description: Retorna el saldo actual de un crédito
+      operationId: getCreditBalance
+      parameters:
+        - name: id
+          in: path
+          description: ID del crédito
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Operación exitosa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreditBalanceDto'
+        '404':
+          description: Crédito no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /credits/{id}/payment:
+    put:
+      tags:
+        - credits
+      summary: Realizar pago a crédito
+      description: Registra un pago a un crédito
+      operationId: makePayment
+      parameters:
+        - name: id
+          in: path
+          description: ID del crédito
+          required: true
+          schema:
+            type: string
+        - name: amount
+          in: query
+          description: Monto del pago
+          required: true
+          schema:
+            type: number
+            format: double
+      responses:
+        '200':
+          description: Pago registrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreditDto'
+        '400':
+          description: Error en la operación
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Crédito no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    CreditDto:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "60c73def2aa3a75f5c5d0f7f"
+        creditNumber:
+          type: string
+          example: "CR-12345678"
+        customerId:
+          type: string
+          example: "60c73def2aa3a75f5c5d0f7b"
+        customerType:
+          type: string
+          enum: [PERSONAL, BUSINESS]
+          example: "PERSONAL"
+        type:
+          type: string
+          enum: [PERSONAL, BUSINESS]
+          example: "PERSONAL"
+        amount:
+          type: number
+          format: double
+          example: 5000.00
+        remainingAmount:
+          type: number
+          format: double
+          example: 4500.00
+        interestRate:
+          type: number
+          format: double
+          example: 12.5
+        term:
+          type: integer
+          format: int32
+          example: 12
+        startDate:
+          type: string
+          format: date
+          example: "2023-07-15"
+        dueDate:
+          type: string
+          format: date
+          example: "2024-07-15"
+      required:
+        - customerId
+        - customerType
+        - type
+        - amount
+        - interestRate
+        - term
+
+    CreditBalanceDto:
+      type: object
+      properties:
+        creditId:
+          type: string
+          example: "60c73def2aa3a75f5c5d0f7f"
+        creditNumber:
+          type: string
+          example: "CR-12345678"
+        totalAmount:
+          type: number
+          format: double
+          example: 5000.00
+        remainingAmount:
+          type: number
+          format: double
+          example: 4500.00
+        paidAmount:
+          type: number
+          format: double
+          example: 500.00
+
+    ErrorResponse:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          example: "2023-07-15T12:00:00Z"
+        status:
+          type: integer
+          format: int32
+          example: 404
+        error:
+          type: string
+          example: "Not Found"
+        message:
+          type: string
+          example: "Credit not found with id: 60c73def2aa3a75f5c5d0f7f"
